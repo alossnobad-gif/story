@@ -15,7 +15,7 @@ export function SettingsPage({ config, state, setState, onNotify }) {
         throw Error("不是有效的完整作品备份");
       if (
         confirm(
-          "恢复将替换当前作品、章节、事件和角色。请先下载当前备份，是否继续？",
+          "恢复将替换当前这部作品的章节、事件和角色，书架上的其他作品不受影响。请先下载当前作品备份，是否继续？",
         )
       ) {
         setState(next);

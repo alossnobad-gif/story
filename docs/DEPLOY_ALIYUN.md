@@ -88,3 +88,11 @@ sudo systemctl show nature-photo -p ActiveState -p SubState -p MainPID
 不要回传 `/etc/story-writing/story.env`、私钥文件、密码文件或完整进程环境。分享日志前检查是否包含自己写入的敏感信息。
 
 修改 AI 配置时直接在服务器执行 `sudoedit /etc/story-writing/story.env`，保存后 `sudo systemctl restart story-writing`；不需要重新下载代码。配置默认百炼中国内地地域，其 Key 与 API_BASE_URL 必须匹配。未配置真实 Key 时只验证示例模式，不声称真实 AI 已可用。
+
+## 多作品书架版本的数据兼容
+
+书架版本在同一个 story.sqlite 中新增 books 和 story_meta 表。首次启动时，在事务中将旧 workspace 的完整正文、章节、事件、角色及版本号迁入第一部作品，完成后写迁移标记；之后不会重复迁移或因删除而重建原作品。原 workspace 记录保留不删除。部署脚本切换前的 SQLite 一致性备份涵盖整个数据库。
+
+更新前等待旧页面显示“已自动保存”，建议同时导出当前作品 JSON；更新后刷新浏览器进入「作品」书架。旧页面继续保存会收到 409 提示，必须先导出尚未保存内容再刷新，不能用旧页面覆盖新书架。
+
+回滚至最初的单作品代码时，旧界面只会显示升级前 workspace 的内容，**无法显示书架新增作品及升级后的编辑**；它们仍保留在 books 表中。不要在旧版继续创作，也不要用旧数据库替换当前数据库。优先修复并恢复书架版；确需降级时先做完整数据库备份及当前作品导出，单独制定数据兼容方案。正常书架版本之间的代码回滚仍按保留 release 和一致性备份流程操作。

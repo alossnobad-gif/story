@@ -27,6 +27,7 @@ import { count, download, uid } from "./data";
 import { useWorkspace } from "./useWorkspace";
 import Assistant from "./Assistant";
 import Library from "./Library";
+import BookShelf from "./BookShelf";
 function Login({ onLogin }) {
   const [password, setPassword] = useState(""),
     [error, setError] = useState("");
@@ -67,8 +68,20 @@ function Login({ onLogin }) {
     </div>
   );
 }
-function Workspace() {
-  const { state, setState, status, error } = useWorkspace();
+function Workspace({ bookId, onBack }) {
+  const { state, setState, status, error, flush } = useWorkspace(bookId);
+  const [leaving, setLeaving] = useState(false);
+  async function returnToShelf() {
+    setLeaving(true);
+    try {
+      await flush();
+      onBack();
+    } catch (e) {
+      notify("返回书架前保存失败，请先导出备份：" + e.message);
+    } finally {
+      setLeaving(false);
+    }
+  }
   const [page, setPage] = useState("write"),
     [sideTab, setSideTab] = useState("章节"),
     [selected, setSelected] = useState("c3"),
@@ -91,7 +104,18 @@ function Workspace() {
     notification.current = setTimeout(() => setToast(""), 5000);
   }
   if (!state)
-    return <div className="loading">{error || "正在打开你的写作空间…"}</div>;
+    return (
+      <div className="loading">
+        <div>
+          {error || "正在打开你的写作空间…"}
+          {error && (
+            <button className="outline" onClick={onBack}>
+              返回书架
+            </button>
+          )}
+        </div>
+      </div>
+    );
   const chapter =
     state.chapters.find((c) => c.id === selected) || state.chapters[0];
   function updateChapter(patch) {
@@ -136,25 +160,31 @@ function Workspace() {
       <nav className="rail">
         <button
           className="brand"
-          onClick={() => {
-            setPage("write");
-            setFocus(false);
-          }}
-          aria-label="叙事首页"
+          onClick={returnToShelf}
+          disabled={leaving}
+          aria-label="返回作品书架"
         >
           叙事
         </button>
         <div className="rail-links">
           {[
-            { id: "write", icon: BookOpen, label: "作品" },
+            { id: "shelf", icon: BookOpen, label: "作品" },
             { id: "library", icon: Folder, label: "素材" },
             { id: "characters", icon: Users, label: "角色" },
             { id: "ideas", icon: Lightbulb, label: "灵感" },
           ].map(({ id, icon: Icon, label }) => (
             <button
               key={id}
-              className={page === id ? "active" : ""}
+              className={
+                page === id || (id === "shelf" && page === "write")
+                  ? "active"
+                  : ""
+              }
               onClick={() => {
+                if (id === "shelf") {
+                  returnToShelf();
+                  return;
+                }
                 setPage(id);
                 setFocus(false);
               }}
@@ -184,8 +214,14 @@ function Workspace() {
           <Menu size={20} />
         </button>
         <div className="breadcrumb">
-          <Home size={16} />
-          <span>我的作品</span>
+          <button
+            className="breadcrumb-back"
+            onClick={returnToShelf}
+            disabled={leaving}
+          >
+            <Home size={16} />
+            <span>{leaving ? "正在保存…" : "作品书架"}</span>
+          </button>
           <span className="slash">/</span>
           <strong>{state.title || "未命名作品"}</strong>
         </div>
@@ -487,6 +523,14 @@ function Workspace() {
     </div>
   );
 }
+function Studio() {
+  const [bookId, setBookId] = useState(null);
+  return bookId ? (
+    <Workspace key={bookId} bookId={bookId} onBack={() => setBookId(null)} />
+  ) : (
+    <BookShelf onOpen={setBookId} />
+  );
+}
 export default function App() {
   const [auth, setAuth] = useState(null),
     [error, setError] = useState("");
@@ -500,7 +544,7 @@ export default function App() {
   ) : auth === null ? (
     <div className="loading">正在连接工作室…</div>
   ) : auth ? (
-    <Workspace />
+    <Studio />
   ) : (
     <Login onLogin={() => setAuth(true)} />
   );

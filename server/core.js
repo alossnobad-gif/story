@@ -17,6 +17,10 @@ export function validateState(s) {
   )
     return false;
   if (
+    (s.description !== undefined &&
+      (typeof s.description !== "string" || s.description.length > 4000)) ||
+    (s.cover !== undefined &&
+      !["forest", "clay", "ink", "sand"].includes(s.cover)) ||
     s.chapters.length < 1 ||
     s.chapters.length > 500 ||
     (s.genre !== undefined &&

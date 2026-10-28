@@ -18,7 +18,7 @@ try:
         connection = http.client.HTTPSConnection('127.0.0.1', args.port or 8443, timeout=8, context=context)
     else:
         connection = http.client.HTTPConnection('127.0.0.1', args.port or 3101, timeout=8)
-    for path in ['/api/health', '/', '/api/workspace']:
+    for path in ['/api/health', '/', '/api/books']:
         connection.request('GET', path)
         response = connection.getresponse()
         body = response.read()

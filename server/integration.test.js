@@ -68,6 +68,19 @@ test("authenticated persistence, stale-write protection and real provider reques
     assert.equal(login.status, 200);
     const cookie = login.headers.get("set-cookie").split(";")[0],
       headers = { "Content-Type": "application/json", Cookie: cookie };
+    const created = await fetch(base + "/api/books", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        title: "测试作品",
+        genre: "悬疑",
+        description: "测试简介",
+        cover: "forest",
+      }),
+    });
+    assert.equal(created.status, 201);
+    const book = await created.json();
+    const bookPath = base + "/api/books/" + book.id;
     const state = {
       title: "测试作品",
       chapters: [
@@ -84,33 +97,31 @@ test("authenticated persistence, stale-write protection and real provider reques
       ],
       characters: [{ id: "p1", name: "林晚", description: "沉默" }],
     };
-    const put = await fetch(base + "/api/workspace", {
+    const put = await fetch(bookPath, {
       method: "PUT",
       headers,
-      body: JSON.stringify({ state, revision: 0 }),
+      body: JSON.stringify({ state, revision: 1 }),
     });
     assert.equal(put.status, 200);
-    assert.equal((await put.json()).revision, 1);
-    const persisted = await (
-      await fetch(base + "/api/workspace", { headers })
-    ).json();
+    assert.equal((await put.json()).revision, 2);
+    const persisted = await (await fetch(bookPath, { headers })).json();
     assert.deepEqual(persisted.state, state);
     assert.equal(
       (
-        await fetch(base + "/api/workspace", {
+        await fetch(bookPath, {
           method: "PUT",
           headers,
-          body: JSON.stringify({ state, revision: 0 }),
+          body: JSON.stringify({ state, revision: 1 }),
         })
       ).status,
       409,
     );
     assert.equal(
       (
-        await fetch(base + "/api/workspace", {
+        await fetch(bookPath, {
           method: "PUT",
           headers: { ...headers, Origin: "https://untrusted.example" },
-          body: JSON.stringify({ state, revision: 1 }),
+          body: JSON.stringify({ state, revision: 2 }),
         })
       ).status,
       403,
@@ -118,7 +129,7 @@ test("authenticated persistence, stale-write protection and real provider reques
     // Node fetch normalizes Host; raw HTTP models Nginx forwarding exactly.
     const proxied = await new Promise((resolve, reject) => {
       const request = httpRequest(
-        base + "/api/workspace",
+        bookPath,
         {
           method: "PUT",
           headers: {
@@ -139,14 +150,14 @@ test("authenticated persistence, stale-write protection and real provider reques
         },
       );
       request.on("error", reject);
-      request.end(JSON.stringify({ state, revision: 1 }));
+      request.end(JSON.stringify({ state, revision: 2 }));
     });
     assert.equal(
       proxied.status,
       200,
       "HTTPS writes preserve custom port in Host",
     );
-    assert.equal(proxied.body.revision, 2);
+    assert.equal(proxied.body.revision, 3);
     const gen = await fetch(base + "/api/generate", {
       method: "POST",
       headers,
@@ -165,10 +176,7 @@ test("authenticated persistence, stale-write protection and real provider reques
     assert.equal(received.auth, "Bearer test-only-not-a-real-key");
     assert.match(received.body.messages[1].content, /重逢/);
     await fetch(base + "/api/logout", { method: "POST", headers });
-    assert.equal(
-      (await fetch(base + "/api/workspace", { headers })).status,
-      401,
-    );
+    assert.equal((await fetch(bookPath, { headers })).status, 401);
   } finally {
     child.kill();
     await new Promise((r) => child.once("exit", r));

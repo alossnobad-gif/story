@@ -1,4 +1,5 @@
 import express from "express";
+import { createBookStore, BookError } from "./books.js";
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -17,6 +18,7 @@ const db = new DatabaseSync(resolve(dir, "story.sqlite"));
 db.exec(
   "PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS workspace(id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL, body TEXT NOT NULL)",
 );
+const books = createBookStore(db);
 const sessions = new Map(),
   failures = new Map();
 let generating = false;
@@ -103,39 +105,30 @@ app.get("/api/config", (_, res) =>
     model: process.env.AI_MODEL || "qwen-plus",
   }),
 );
-app.get("/api/workspace", (_, res) => {
-  const row = db
-    .prepare("SELECT revision,body FROM workspace WHERE id=1")
-    .get();
-  res.json(
-    row
-      ? { revision: row.revision, state: JSON.parse(row.body) }
-      : { revision: 0, state: null },
-  );
-});
-app.put("/api/workspace", (req, res) => {
-  const { state, revision } = req.body;
-  if (!validateState(state) || !Number.isInteger(revision))
-    return res.status(400).json({ error: "作品格式不正确" });
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    const row = db.prepare("SELECT revision FROM workspace WHERE id=1").get();
-    if ((row?.revision || 0) !== revision) {
-      db.exec("ROLLBACK");
-      return res
-        .status(409)
-        .json({ error: "其他窗口已更新作品，请先导出当前内容，再刷新页面" });
-    }
-    db.prepare(
-      "INSERT INTO workspace(id,revision,body) VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision,body=excluded.body",
-    ).run(revision + 1, JSON.stringify(state));
-    db.exec("COMMIT");
-    res.json({ revision: revision + 1 });
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
-});
+app.all("/api/workspace", (_, res) =>
+  res
+    .status(409)
+    .json({ error: "作品已升级为书架，请导出未保存的正文后刷新页面" }),
+);
+app.get("/api/books", (req, res) =>
+  res.json({ books: books.list(req.query.trash === "1") }),
+);
+app.post("/api/books", (req, res) =>
+  res.status(201).json(books.create(req.body)),
+);
+app.get("/api/books/:id", (req, res) => res.json(books.get(req.params.id)));
+app.put("/api/books/:id", (req, res) =>
+  res.json(books.write(req.params.id, req.body.state, req.body.revision)),
+);
+app.patch("/api/books/:id", (req, res) =>
+  res.json(books.edit(req.params.id, req.body, req.body.revision)),
+);
+app.delete("/api/books/:id", (req, res) =>
+  res.json(books.move(req.params.id, req.body.revision)),
+);
+app.post("/api/books/:id/restore", (req, res) =>
+  res.json(books.move(req.params.id, req.body.revision, true)),
+);
 app.post("/api/generate", async (req, res) => {
   const {
     mode,
@@ -208,6 +201,8 @@ app.post("/api/generate", async (req, res) => {
 app.use(express.static(resolve("dist")));
 app.get("/{*path}", (req, res) => res.sendFile(resolve("dist/index.html")));
 app.use((err, req, res, next) => {
+  if (err instanceof BookError)
+    return res.status(err.status).json({ error: err.message });
   console.error("Request failed:", err.name);
   res.status(err.status === 413 ? 413 : 500).json({
     error:
