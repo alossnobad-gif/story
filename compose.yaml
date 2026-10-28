@@ -1,0 +1,18 @@
+services:
+  story:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${BIND_IP:-127.0.0.1}:${PUBLISH_PORT:-3001}:3001"
+    volumes:
+      - story-data:/app/data
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3001
+      DATA_DIR: /app/data
+    security_opt:
+      - no-new-privileges:true
+volumes:
+  story-data:
