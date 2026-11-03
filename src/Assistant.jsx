@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   Sparkles,
+  BookOpen,
   Mountain,
   PersonStanding,
   MessageCircle,
@@ -14,8 +15,9 @@ import {
   LoaderCircle,
 } from "lucide-react";
 import { api } from "./api";
-import { modes, sample, samples } from "./data";
+import { modes, samples } from "./data";
 const icons = [
+  BookOpen,
   Mountain,
   PersonStanding,
   MessageCircle,
@@ -31,17 +33,15 @@ export default function Assistant({
   onError,
 }) {
   const [tab, setTab] = useState("写作辅助"),
-    [mode, setMode] = useState(modes[0]),
-    [instruction, setInstruction] = useState(
-      "增加雨夜港口的氛围感，保持克制的悬疑感",
-    ),
-    [result, setResult] = useState({
-      text: sample,
-      demo: true,
-      mode: modes[0],
-    }),
+    [mode, setMode] = useState(chapter.body.trim() ? "情节续写" : modes[0]),
+    [instruction, setInstruction] = useState(""),
+    [result, setResult] = useState(null),
     [busy, setBusy] = useState(false);
   async function generate() {
+    if (mode === "根据梗概写正文" && !chapter.summary.trim()) {
+      onError("请先在故事构思中采纳分章方案，或填写本章梗概");
+      return;
+    }
     setBusy(true);
     try {
       if (!config.ai) {
@@ -72,6 +72,9 @@ export default function Assistant({
         <h2>灵感助手</h2>
         <span className="tiny-tag">{config.ai ? "通义千问" : "示例模式"}</span>
       </div>
+      <p className="planner-assistant-note">
+        先选「根据梗概写正文」，审阅后插入；已有正文会保留。
+      </p>
       <div className="tabs">
         {["写作辅助", "章节事件"].map((t) => (
           <button
@@ -113,7 +116,7 @@ export default function Assistant({
             placeholder="告诉助手，你希望这一段如何发生…"
           />
           <div className="context-note">
-            将参考本章正文、{chapter.eventIds.length} 个事件与{" "}
+            将参考本章梗概、正文、{chapter.eventIds.length} 个事件与{" "}
             {state.characters.length} 位角色
           </div>
           <button
@@ -126,7 +129,11 @@ export default function Assistant({
             ) : (
               <Sparkles size={18} />
             )}{" "}
-            {busy ? "正在构思…" : config.ai ? "生成灵感" : "查看灵感示例"}
+            {busy
+              ? "正在构思…"
+              : config.ai
+                ? "生成待审阅草稿"
+                : "查看固定正文示例"}
           </button>
           {result && (
             <div className="result">
@@ -137,16 +144,18 @@ export default function Assistant({
               <div className="result-text">{result.text}</div>
               <button
                 className="outline full"
+                disabled={result.inserted}
                 onClick={() => {
                   updateChapter({
                     body:
                       chapter.body + (chapter.body ? "\n\n" : "") + result.text,
                   });
+                  setResult((current) => ({ ...current, inserted: true }));
                   onError("已插入本章正文");
                 }}
               >
                 <Plus size={16} />
-                插入正文
+                {result.inserted ? "已插入正文" : "插入正文"}
               </button>
             </div>
           )}

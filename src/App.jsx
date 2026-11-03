@@ -28,6 +28,7 @@ import { useWorkspace } from "./useWorkspace";
 import Assistant from "./Assistant";
 import Library from "./Library";
 import BookShelf from "./BookShelf";
+import StoryPlanner from "./StoryPlanner";
 function Login({ onLogin }) {
   const [password, setPassword] = useState(""),
     [error, setError] = useState("");
@@ -82,7 +83,7 @@ function Workspace({ bookId, onBack }) {
       setLeaving(false);
     }
   }
-  const [page, setPage] = useState("write"),
+  const [page, setPage] = useState("ideas"),
     [sideTab, setSideTab] = useState("章节"),
     [selected, setSelected] = useState("c3"),
     [focus, setFocus] = useState(false),
@@ -171,7 +172,7 @@ function Workspace({ bookId, onBack }) {
             { id: "shelf", icon: BookOpen, label: "作品" },
             { id: "library", icon: Folder, label: "素材" },
             { id: "characters", icon: Users, label: "角色" },
-            { id: "ideas", icon: Lightbulb, label: "灵感" },
+            { id: "ideas", icon: Lightbulb, label: "构思" },
           ].map(({ id, icon: Icon, label }) => (
             <button
               key={id}
@@ -357,6 +358,16 @@ function Workspace({ bookId, onBack }) {
         {page === "write" ? (
           <>
             <section className="editor">
+              <button
+                className="outline planner-return"
+                onClick={() => {
+                  setPage("ideas");
+                  setFocus(false);
+                }}
+              >
+                <Lightbulb size={16} />
+                回到故事构思 · 先说想法，再写章节
+              </button>
               <div className="document-meta">
                 <span>
                   第 {state.chapters.indexOf(chapter) + 1} 章 ·{" "}
@@ -478,38 +489,21 @@ function Workspace({ bookId, onBack }) {
             onNotify={notify}
           />
         ) : (
-          <section className="page-content">
-            <div className="page-title">
-              <div>
-                <span className="overline">把偶然的念头，变成故事的起点</span>
-                <h1>灵感工作台</h1>
-                <p>一个好故事，常常始于一个“如果”。</p>
-              </div>
-            </div>
-            <div className="idea-sheet">
-              <h2>如果，那封信来自未来的自己？</h2>
-              <p>
-                把宏大的设定缩小成一个人物必须面对的选择。试着用下面三个问题，找到你的下一章。
-              </p>
-              {[
-                "他最想得到的东西是什么？",
-                "如果得到它，他必须失去什么？",
-                "谁知道一个他不知道的秘密？",
-              ].map((t, i) => (
-                <div className="idea-question" key={t}>
-                  <span>0{i + 1}</span>
-                  <h3>{t}</h3>
-                </div>
-              ))}
-              <button className="primary" onClick={() => setPage("library")}>
-                <Plus size={16} />
-                去素材库收藏你的答案
-              </button>
-            </div>
-            <div className="info-band">
-              这些是创作引导示例。要生成真实的场景、动作或对白，请打开章节右侧的灵感助手。
-            </div>
-          </section>
+          <StoryPlanner
+            state={state}
+            setState={setState}
+            config={config}
+            onNotify={notify}
+            onWrite={() => {
+              setSelected(
+                state.planning?.chapterIds?.find((id) =>
+                  state.chapters.some((c) => c.id === id),
+                ) || state.chapters[0].id,
+              );
+              setSideTab("大纲");
+              setPage("write");
+            }}
+          />
         )}
       </main>
       {toast && (

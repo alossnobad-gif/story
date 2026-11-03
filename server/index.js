@@ -1,3 +1,4 @@
+import { buildPlanMessages, parsePlan, validPlanInput } from "./planning.js";
 import express from "express";
 import { createBookStore, BookError } from "./books.js";
 import { DatabaseSync } from "node:sqlite";
@@ -129,7 +130,8 @@ app.delete("/api/books/:id", (req, res) =>
 app.post("/api/books/:id/restore", (req, res) =>
   res.json(books.move(req.params.id, req.body.revision, true)),
 );
-app.post("/api/generate", async (req, res) => {
+app.post(["/api/generate", "/api/plan"], async (req, res) => {
+  const planning = req.path === "/api/plan";
   const {
     mode,
     instruction = "",
@@ -138,15 +140,17 @@ app.post("/api/generate", async (req, res) => {
     characters = [],
   } = req.body;
   if (
-    !MODES[mode] ||
-    typeof instruction !== "string" ||
-    instruction.length > 4000 ||
-    !chapter ||
-    typeof chapter.title !== "string" ||
-    typeof chapter.body !== "string" ||
-    typeof chapter.summary !== "string" ||
-    !Array.isArray(events) ||
-    !Array.isArray(characters)
+    planning
+      ? !validPlanInput(req.body)
+      : !Object.hasOwn(MODES, mode) ||
+        typeof instruction !== "string" ||
+        instruction.length > 4000 ||
+        !chapter ||
+        typeof chapter.title !== "string" ||
+        typeof chapter.body !== "string" ||
+        typeof chapter.summary !== "string" ||
+        !Array.isArray(events) ||
+        !Array.isArray(characters)
   )
     return res.status(400).json({ error: "生成参数无效" });
   if (!process.env.AI_API_KEY)
@@ -169,14 +173,16 @@ app.post("/api/generate", async (req, res) => {
       },
       body: JSON.stringify({
         model: process.env.AI_MODEL || "qwen-plus",
-        messages: buildMessages({
-          mode,
-          instruction,
-          chapter,
-          events: events.slice(0, 20),
-          characters: characters.slice(0, 30),
-        }),
-        max_tokens: 1800,
+        messages: planning
+          ? buildPlanMessages(req.body)
+          : buildMessages({
+              mode,
+              instruction,
+              chapter,
+              events: events.slice(0, 20),
+              characters: characters.slice(0, 30),
+            }),
+        max_tokens: planning ? 6000 : 1800,
         temperature: 0.8,
       }),
       signal: AbortSignal.timeout(90000),
@@ -189,6 +195,20 @@ app.post("/api/generate", async (req, res) => {
       text = data.choices?.[0]?.message?.content;
     if (typeof text !== "string" || !text.trim())
       throw new Error("Empty result");
+    if (planning) {
+      let plan;
+      try {
+        plan = parsePlan(text, req.body.chapterCount);
+      } catch {
+        return res
+          .status(502)
+          .json({
+            error:
+              "模型返回的剧情结构不完整，请减少章节数或重试；你的想法和已有章节未改变",
+          });
+      }
+      return res.json({ plan, model: process.env.AI_MODEL || "qwen-plus" });
+    }
     res.json({ text, model: process.env.AI_MODEL || "qwen-plus" });
   } catch {
     return res

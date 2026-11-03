@@ -1,4 +1,7 @@
+import { validPlanning } from "./planning.js";
 export const MODES = {
+  根据梗概写正文:
+    "根据本章梗概中的时间、人物目标和剧情发展，扩写成连贯的小说正文，保持时间顺序和已确认情节；不要复述大纲，不擅自提前写后续章节",
   场景描写: "补充环境、光线、声音、气味与空间细节",
   动作细节: "用具体动作表现人物意图与情绪",
   人物对白: "生成有潜台词且符合人物性格的对白",
@@ -30,6 +33,7 @@ export function validateState(s) {
         !Number.isFinite(s.goal) ||
         s.goal < 100 ||
         s.goal > 10000000)) ||
+    (s.planning !== undefined && !validPlanning(s.planning)) ||
     s.events.length > 2000 ||
     s.characters.length > 500
   )

@@ -1903,3 +1903,60 @@ progress::-webkit-progress-value {
 .book-card-main {
   flex: 1;
 }
+
+/* Idea-first planning uses the studio's existing paper and forest palette. */
+.planner-page { max-width: 1500px; width: 100%; margin: 0 auto; }
+.planner-heading { max-width: 750px; margin-bottom: 28px; }
+.planner-heading h1 { font-family: var(--serif); font-size: clamp(25px, 2.2vw, 35px); line-height: 1.5; margin: 12px 0; }
+.planner-heading p { color: #68736c; font-size: 14px; line-height: 1.9; }
+.planner-mobile-break { display: none; }
+.planner-steps { display: flex; flex-wrap: wrap; gap: 22px; padding: 0 0 26px; margin: 0 0 28px; border-bottom: 1px solid var(--border); list-style: none; }
+.planner-steps li { display: flex; align-items: center; gap: 8px; color: #6c766f; font-size: 12px; }
+.planner-steps li > span { display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid #c7d1c9; border-radius: 50%; }
+.planner-steps .current { color: var(--green); font-weight: 600; }
+.planner-steps .current > span { background: var(--green); color: white; border-color: var(--green); }
+.planner-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); gap: 28px; align-items: start; }
+.planner-inputs, .planner-preview { min-width: 0; }
+.planner-section-title { display: flex; align-items: center; gap: 9px; margin-bottom: 24px; color: var(--green); }
+.planner-section-title h2 { font-size: 17px; margin: 0; }
+.planner-section-title > span { margin-left: auto; font-size: 11px; color: #68736c; }
+.planner-page fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.planner-page label { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 13px; font-weight: 500; margin: 0 0 10px; }
+.planner-page label small { display: block; width: 100%; font-weight: 400; color: #6f786f; line-height: 1.7; }
+.planner-page textarea, .planner-page input { width: 100%; font-size: 13px; line-height: 1.9; border-radius: 7px; }
+.planner-inputs fieldset > textarea { margin-bottom: 24px; padding: 15px; }
+.planner-page textarea::placeholder { color: #7c857e; }
+.planner-count { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; gap: 12px; }
+.planner-count label { margin: 0; }
+.planner-count select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 5px; background: white; }
+.planner-generate { min-height: 46px; }
+.planner-note { color: #6b766e; font-size: 12px; line-height: 1.85; margin: 12px 0 20px; }
+.planner-preview { padding: 25px; background: #fff; border: 1px solid var(--border); border-radius: 12px; }
+.planner-preview > label { margin-bottom: 22px; }
+.planner-empty { text-align: center; padding: 55px 8px; }
+.planner-empty-icon { display: inline-grid; place-items: center; width: 70px; height: 70px; background: #eaf0e9; color: #557563; border-radius: 50%; margin-bottom: 25px; }
+.planner-empty h2 { font-size: 19px; }
+.planner-empty p { font-size: 13px; color: #6b766e; line-height: 2; }
+.planner-empty > div:not(.planner-empty-icon) { border-top: 1px solid var(--border); padding-top: 22px; margin-top: 28px; font-size: 12px; color: var(--green); }
+.planner-questions { background: #f7f3e8; padding: 16px; border-radius: 6px; margin: 24px 0; font-size: 13px; }
+.planner-questions p { white-space: pre-wrap; line-height: 1.8; margin: 10px 0; }
+.planner-questions small { color: #766c51; }
+.planner-chapters-heading { font-size: 14px; margin: 30px 0 20px; }
+.planner-chapter { display: flex; gap: 12px; padding-bottom: 18px; margin-bottom: 22px; border-bottom: 1px solid var(--border); }
+.planner-chapter-index { color: #799281; font-family: var(--serif); font-size: 23px; padding-top: 4px; }
+.planner-chapter > div { min-width: 0; flex: 1; }
+.planner-chapter label { color: #65736b; font-size: 11px; }
+.planner-error { color: #993e30; background: #fbeee8; padding: 13px; font-size: 13px; line-height: 1.8; }
+.planner-return { margin-bottom: 24px; width: 100%; padding: 12px; }
+.planner-assistant-note { font-size: 12px; line-height: 1.8; color: #68756b; margin: 0 0 20px; }
+@media (max-width: 1100px) {
+  .planner-columns { grid-template-columns: minmax(0, 1fr); }
+  .planner-empty { padding: 28px 8px; }
+}
+@media (max-width: 700px) {
+  .planner-steps { gap: 12px; }
+  .planner-steps li { font-size: 11px; }
+  .planner-preview { padding: 18px; }
+  .planner-heading h1 { font-size: 25px; }
+  .planner-mobile-break { display: initial; }
+}

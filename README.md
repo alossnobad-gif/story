@@ -1,6 +1,20 @@
 # 叙事 · 私人小说创作工作室
 
-React + Vite 前端，Node.js 24 + Express + SQLite 后端。支持多作品书架，默认中文界面、通义千问接口，适合个人在阿里云 ECS 部署。产品构想和当前边界见 [产品说明](docs/PRODUCT.md)。
+React + Vite 前端，Node.js 24 + Express + SQLite 后端。面向有故事想法、还不熟悉小说写作的人：输入想法和时间，系统帮你整理剧情与章节，再逐章写作。支持多作品书架，默认中文界面、通义千问接口，适合个人在阿里云 ECS 部署。产品构想和当前边界见 [产品说明](docs/PRODUCT.md)。
+
+## 项目记忆与维护入口
+
+- [协作规则](AGENTS.md) · [运维交接与只读服务器检查](docs/operations/HANDOFF.md)
+- [发布记录与回退](docs/operations/RELEASES.md) · [变更记录](docs/CHANGELOG.md)
+- [产品需求与边界](docs/PRODUCT.md) · [功能清单](docs/FEATURES.md) · [关键回归](docs/REGRESSION.md)
+
+当前应用代码已在云开发环境验证；目标 ECS 是否部署、运行哪个版本尚未核实。部署文件描述仓库方案，不代表当前线上状态。
+
+## 从想法到章节
+
+打开作品后进入「构思」：写零散想法与故事时间（允许“十年前”“第二天”等相对时间），选择本次 1–12 章，点击「帮我整理剧情和章节」。AI 返回剧情大纲、时间线、待确认问题和可编辑的章节梗概。审阅后采纳会追加空正文的章节，保留原稿；同一方案不会重复追加。修改原始想法后需重新整理再采纳。
+
+点击「去章节，按梗概写正文」，生成待审阅草稿，再插入正文。想法和方案自动保存在当前作品，完整 JSON 备份也包含它们。不配置 AI Key 时只能预览明确标注的固定示例，不会根据你的输入生成。
 
 ## 作品书架
 
@@ -31,7 +45,7 @@ npm start
 
 构建后由后端在 3001 端口提供页面。数据保存在 data/story.sqlite，不能只备份前端文件。
 
-## 当前阿里云 Ubuntu 服务器（推荐 systemd）
+## 阿里云 Ubuntu 独立部署方案（线上状态待核实）
 
 针对已有自然图鉴的 `123.57.60.66`，采用独立 Node 24、systemd、3101 回环端口和 8443 HTTPS 入口，数据/密钥位于代码目录之外。完整隔离、固定提交更新、资源限制、备份和回滚约定见 [Ubuntu 部署说明](docs/DEPLOY_ALIYUN.md)。下方 Docker 方案为其他服务器的可选部署方式，不应用于覆盖现有自然图鉴配置。
 
@@ -46,7 +60,7 @@ git clone https://github.com/alossnobad-gif/story.git
 cd story
 cp .env.example .env
 # 用编辑器填写 APP_PASSWORD（至少 12 字符），可选填写 AI_API_KEY。
-# 当前代码需要先由你提交并推送到仓库，服务器才能拉取。
+# 首次部署前核实仓库版本；该示例不是针对现有 ECS 的更新命令。
 docker compose up -d --build
 docker compose ps
 curl --fail http://127.0.0.1:3001/api/health
@@ -86,13 +100,13 @@ location / {
 
 ## 通义千问
 
-在阿里云百炼开通模型服务，使用与你选择地域一致的 API Key。在服务器 .env 设置真实密钥，不要提交到 Git：
+在阿里云百炼开通模型服务，使用与你选择地域一致的 API Key。Docker 部署在服务器 .env 设置真实密钥；systemd 方案使用 /etc/story-writing/story.env，详见运维交接。配置项如下，不要提交到 Git：
 
 - `AI_API_KEY`：百炼密钥。
 - `AI_MODEL=qwen-plus`：可换为账户有权限的模型。
 - `AI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1`：默认中国内地地域。其他地域请根据百炼官方文档改为对应地址和密钥。
 
-修改后运行 `docker compose up -d --force-recreate`。模型生成会发送当前章节末尾最多 14000 字符、最多 20 条本章事件（每条内容最多 2000 字符）、最多 30 位角色（每位设定最多 1500 字符）和创作要求；产生服务商费用。当前版本串行生成，90 秒超时。服务商错误会明确提示，不会悄悄用示例代替。
+Docker 修改后运行 `docker compose up -d --force-recreate`；systemd 方案仅重启 story-writing。模型生成会发送当前章节末尾最多 14000 字符、最多 20 条本章事件（每条内容最多 2000 字符）、最多 30 位角色（每位设定最多 1500 字符）和创作要求；产生服务商费用。当前版本串行生成，90 秒超时。服务商错误会明确提示，不会悄悄用示例代替。
 
 ## 素材导入格式
 
@@ -118,7 +132,7 @@ docker compose start story
 
 备份目录已存在时先换一个新的日期目录，避免嵌套混淆。恢复时停止 story，将备份目录中的数据库文件复制回容器的 /app/data/，确保归属 node 用户后再启动。请先在备用环境演练恢复。
 
-更新：先备份，再 `git pull --ff-only`，然后 `docker compose up -d --build`。当前尚无自动数据库迁移或版本历史。可在工作室设置中通过“恢复 JSON 备份”载入完整作品；恢复只替换当前打开的作品，不影响书架上的其他作品，操作前先下载当前作品备份。
+更新：先备份，再 `git pull --ff-only`，然后 `docker compose up -d --build`。当前已实现单作品到书架的一次性迁移，尚无通用迁移框架或完整版本历史。可在工作室设置中通过“恢复 JSON 备份”载入完整作品；恢复只替换当前打开的作品，不影响书架上的其他作品，操作前先下载当前作品备份。
 
 ## 安全与运行边界
 

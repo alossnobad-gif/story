@@ -277,7 +277,7 @@ export default function BookShelf({ onOpen }) {
                       <p className="book-genre">{book.genre || "题材待定"}</p>
                       <p className="book-description">
                         {book.description ||
-                          "一个新的故事，等待你写下第一句话。"}
+                          "先记下想法和时间，让系统帮你整理成故事。"}
                       </p>
                       <div className="book-stats">
                         {book.chapterCount} 章<span>·</span>
@@ -309,7 +309,7 @@ export default function BookShelf({ onOpen }) {
                           className="continue-book"
                           onClick={() => onOpen(book.id)}
                         >
-                          继续写作
+                          构思与写作
                           <ArrowUpRight size={15} />
                         </button>
                         <div>

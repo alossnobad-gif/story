@@ -1,4 +1,5 @@
 export const modes = [
+  "根据梗概写正文",
   "场景描写",
   "动作细节",
   "人物对白",
@@ -116,3 +117,7 @@ export const samples = {
   文字润色:
     "雨没有停。海风从货轮之间穿过，卷起一声沉沉的汽笛。林晚站在栈桥尽头，把那封没有署名的信攥得更紧了一些。",
 };
+
+// Demo prose for the outline-to-prose mode is intentionally fixed, never input-derived.
+samples["根据梗概写正文"] =
+  "【固定正文示例，与当前梗概无关】清晨，林舟推开修钟铺的门，一只没有署名的包裹正躺在门槛内。她拆开纸盒，指尖忽然停住了。那只失踪十年的怀表，此刻正安静地躺在旧绒布上。";
