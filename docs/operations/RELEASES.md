@@ -2,19 +2,71 @@
 
 真实仓库：https://github.com/alossnobad-gif/story.git 。保持手动发布，无自动部署。当前工作区包括协作文档及构思流程改动，不执行生产操作。
 
-## 当前状态（2026-11-03）
+## 当前发布（2026-11-03）
 
-| 项目 | 状态与证据 |
-| --- | --- |
-| 本地应用基线 | d242cf5a8c55da82984dea3a01d3d04f3f41e0df |
-| 基线远程存在 | 本会话环境设置时 git ls-remote origin HEAD 返回上述 SHA；这是当时观察，不保证远程之后未变化 |
-| 本次变更 | 文档与构思流程工作区完成，尚未提交/推送；无本次发布 SHA；依赖和数据库结构未变 |
-| 本地应用验证 | 6 项 Node 测试、Vite 构建、后端与前端代理页面/API 冒烟通过；真实 AI 未验证；本次复跑 Node 6/6、部署辅助 Python 2/2、构建、Bash 语法和 diff 检查均通过 |
-| ECS 已安装/当前版本 | 未知，未登录或收到当前执行回执 |
-| 用户执行更新 | 未执行本次发布 |
-| 公网功能验收 | 未验证 |
+应用版本：`44678a83324a9c169316c76b327a0f836b4439f5`，已正常推送至 main，并用 git ls-remote 核实。后续发布记录提交仅补充文档，不改变此应用版本。此前基线为 d242cf5a8c55da82984dea3a01d3d04f3f41e0df。
 
-没有本次已推送提交，也没有实机配置确认，因此不提供会改变服务器的“本次发布命令”，不把旧 SHA 冒充本次版本。历史文档整理无需重启；本次功能代码需要在推送并确认实机后另行发布。先执行 [HANDOFF 的只读检查](HANDOFF.md#集中只读服务器检查)；未来完成开发并推送后，必须在此追加针对实际部署的完整 Bash，而非占位模板。
+本地验证：Node 8/8、Python 部署辅助 2/2、Vite 构建、桌面/手机 Playwright 完整交互通过。依赖声明及数据库表结构未变。真实 AI 未调用；服务器命令尚未执行，线上版本和公网验收未知。
+
+以下命令由用户在 Workbench 手动执行。先检查预设部署与实际配置、旧版本 HTTP/HTTPS、已有辅助工具内容；不匹配立即停止，不重装或覆盖配置。固定 codeload 归档已下载并与 Git 提交逐文件比对，命令校验 SHA256 后使用其中的更新脚本。应用获取仍由现有更新脚本通过 Git fetch 完成；如 Git 获取失败即中止，不宣称已有 codeload 应用下载回退。既有 release 已裁剪开发依赖，当前工具会在新目录恢复构建依赖；本次不扩大为部署工具重构。
+
+### 完整手动更新命令
+
+```bash
+sudo bash <<'STORY_UPDATE'
+set -Eeuo pipefail
+umask 077
+trap 'printf "更新中止（退出码 %s），请保留错误输出；没有继续执行后续步骤。\n" "$?" >&2' ERR
+STORY_REV=44678a83324a9c169316c76b327a0f836b4439f5
+STORY_REPO=https://github.com/alossnobad-gif/story.git
+[[ -f /opt/story/.managed-by-story-writing ]]
+[[ $(cat /opt/story/.managed-by-story-writing) == story-writing-v1 ]]
+[[ -L /opt/story/current && -s /var/lib/story-writing/data/story.sqlite ]]
+[[ $(systemctl show story-writing -p WorkingDirectory --value) == /opt/story/current ]]
+systemctl is-active --quiet story-writing
+systemctl is-active --quiet nature-photo
+nginx -t
+python3 - <<'PY'
+import shlex
+from pathlib import Path
+expected = {'NODE_ENV': 'production', 'HOST': '127.0.0.1', 'PORT': '3101', 'DATA_DIR': '/var/lib/story-writing/data'}
+found = {}
+for line in Path('/etc/story-writing/story.env').read_text().splitlines():
+    key, sep, raw = line.partition('=')
+    if sep and key in expected:
+        values = shlex.split(raw)
+        if len(values) == 1:
+            found[key] = values[0]
+if found != expected:
+    raise SystemExit('实际部署配置与仓库预设不同，已停止；未改动配置或数据。')
+PY
+STORY_TMP=$(mktemp -d /tmp/story-update.XXXXXX)
+trap 'rm -rf -- "$STORY_TMP"' EXIT
+curl --proto '=https' --tlsv1.2 --fail --location --retry 2 --connect-timeout 20 --max-time 300 \
+  "https://codeload.github.com/alossnobad-gif/story/tar.gz/$STORY_REV" -o "$STORY_TMP/source.tar.gz"
+printf '%s  %s\n' dab97d2e1aa29bb9034486f6ce61c757a3eff1a041eda79f3b8dfe0354a558be "$STORY_TMP/source.tar.gz" | sha256sum --check --strict
+tar -xzf "$STORY_TMP/source.tar.gz" -C "$STORY_TMP" --no-same-owner
+STORY_SOURCE="$STORY_TMP/story-$STORY_REV"
+for tool in snapshot.py verify.py; do
+  cmp -- "$STORY_SOURCE/deploy/$tool" "/opt/story/bin/$tool"
+done
+STORY_PREVIOUS=$(readlink -f /opt/story/current)
+[[ $STORY_PREVIOUS == /opt/story/releases/* ]]
+STORY_OLD_REV=$(cat /opt/story/current/REVISION)
+[[ $STORY_OLD_REV =~ ^[0-9a-f]{40}$ ]]
+python3 "$STORY_SOURCE/deploy/verify.py" "$STORY_OLD_REV"
+python3 "$STORY_SOURCE/deploy/verify.py" "$STORY_OLD_REV" --https
+printf '仓库：%s\n目标提交：%s\n' "$STORY_REPO" "$STORY_REV"
+# 原更新工具完成固定提交下载、新目录依赖/构建/测试、一致性备份、切换、重启和健康检查。
+# 旧发行版已裁剪开发依赖，构建工具需在新目录恢复；不修改旧目录和系统 Node。
+bash "$STORY_SOURCE/deploy/update.sh" "$STORY_REV"
+[[ -s /opt/story/last-backup/story.sqlite && -s /opt/story/last-backup/story.env ]]
+printf '本机更新检查通过；公网功能请在浏览器验收。\n旧代码保留：%s\n' "$STORY_PREVIOUS"
+printf '仅代码回滚命令（先核对版本兼容，不恢复旧数据库）：sudo /opt/story/bin/rollback.sh %q\n' "$STORY_PREVIOUS"
+STORY_UPDATE
+```
+
+备份与旧版本的实际路径由运行结果输出，用户回传后再记录实测状态。上述命令仅在临时下载目录清理文件，不删除业务数据、已有 release、备份、配置或上传目录，不操作自然图鉴的服务与配置。保留数据不等于备份覆盖了所有文件：现有工具备份 SQLite 与环境文件，未覆盖 uploads/TLS；当前应用没有上传功能，若实际存在额外业务文件，应先补齐备份方案。
 
 ## 本次构思流程验证与回退范围
 
